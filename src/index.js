@@ -204,22 +204,14 @@ const generateResponsesDefinition = (responses = {}) => {
   if (_.isEmpty(responses)) return [];
   return Object.entries(responses).map(([name, response]) => {
     const type = getResReqTypes([["", response]]);
-    // if (type.includes("{") && !type.includes("|") && !type.includes("&")) {
-    //   return `export interface ${pascalCase(name)}Response ${type}`;
-    // } else {
     return `export type ${pascalCase(name)}Response = ${type}`;
-    // }
   });
 };
 const generateRequestBodiesDefinition = (requestBodies = {}) => {
   if (_.isEmpty(requestBodies)) return [];
   return Object.entries(requestBodies).map(([name, requestBody]) => {
     const type = getResReqTypes([["", requestBody]]);
-    // if (type.includes("{") && !type.includes("|") && !type.includes("&")) {
-    //   return `export interface ${pascalCase(name)}RequestBody ${type}`;
-    // } else {
     return `export type ${pascalCase(name)}RequestBody = ${type};`;
-    // }
   });
 };
 const generatorGlobalTypes = (schema) => [
@@ -260,11 +252,8 @@ const getOptions = _.compose(
           (param) => param.in === "query"
         );
 
-        const operationName = concatString(
-          isQuery ? "query" : "mutation",
-          pascalCase(
-            operation.operationId || _.camelCase(operation.summary || "")
-          )
+        const operationName = _.camelCase(
+          operation.operationId || operation.summary || ""
         );
 
         const responseType = getResReqTypes(
@@ -312,105 +301,18 @@ const getOptions = _.compose(
 async function generator(spec, outputpath) {
   const schema = await convertToOpenApiSchema(spec);
   validateSchema(schema);
-  await runner(`generator init --outputpath ${outputpath}`, defaultParams);
   const models = generatorGlobalTypes(schema);
-  for (let model of models) {
-    await runner(
-      `generator model --outputpath ${outputpath} --model "${model}"`,
-      defaultParams
-    );
-  }
   const options = getOptions(schema);
-  for (let option of options) {
-    const {
-      verb,
-      route,
-      isQuery,
-      responseType,
-      pathParamsType,
-      searchParamsType,
-      operationName,
-    } = option;
-    const requestBodyType =
-      option.requestBodyType && option.requestBodyType !== "void"
-        ? option.requestBodyType
-        : "";
-
-    if (isQuery && !pathParamsType && !searchParamsType) {
-      await runner(
-        `generator query --outputpath ${outputpath} --name ${operationName} --url ${route} --output "${responseType}"`,
-        defaultParams
-      );
-    }
-    if (isQuery && pathParamsType && !searchParamsType) {
-      await runner(
-        `generator query-with-pathparams --outputpath ${outputpath} --name ${operationName} --url ${route} --output "${responseType}" --pathparams "${pathParamsType}"`,
-        defaultParams
-      );
-    }
-    if (isQuery && !pathParamsType && searchParamsType) {
-      await runner(
-        `generator query-with-searchparams --outputpath ${outputpath} --name ${operationName} --url ${route} --output "${responseType}" --searchparams "${searchParamsType}"`,
-        defaultParams
-      );
-    }
-    if (isQuery && pathParamsType && searchParamsType) {
-      await runner(
-        `generator query-with-pathparams-and-searchparams --outputpath ${outputpath} --name ${operationName} --url ${route} --output "${responseType}" --pathparams "${pathParamsType}" --searchparams "${searchParamsType}"`,
-        defaultParams
-      );
-    }
-
-    if (!isQuery && !pathParamsType && !searchParamsType && !requestBodyType) {
-      await runner(
-        `generator mutation --outputpath ${outputpath} --name ${operationName} --url ${route} --method ${verb} --output "${responseType}"`,
-        defaultParams
-      );
-    }
-    if (!isQuery && pathParamsType && !searchParamsType && !requestBodyType) {
-      await runner(
-        `generator mutation-with-pathparams --outputpath ${outputpath} --name ${operationName} --url ${route} --method ${verb} --output "${responseType}" --pathparams "${pathParamsType}"`,
-        defaultParams
-      );
-    }
-    if (!isQuery && !pathParamsType && searchParamsType && !requestBodyType) {
-      await runner(
-        `generator mutation-with-searchparams --outputpath ${outputpath} --name ${operationName} --url ${route} --method ${verb} --output "${responseType}" --searchparams "${searchParamsType}"`,
-        defaultParams
-      );
-    }
-    if (!isQuery && pathParamsType && searchParamsType && !requestBodyType) {
-      await runner(
-        `generator mutation-with-pathparams-and-searchparams --outputpath ${outputpath} --name ${operationName} --url ${route} --method ${verb} --output "${responseType}" --pathparams "${pathParamsType}" --searchparams "${searchParamsType}"`,
-        defaultParams
-      );
-    }
-
-    if (!isQuery && !pathParamsType && !searchParamsType && requestBodyType) {
-      await runner(
-        `generator mutation-with-body --outputpath ${outputpath} --name ${operationName} --url ${route} --method ${verb} --output "${responseType}" --input "${requestBodyType}"`,
-        defaultParams
-      );
-    }
-    if (!isQuery && pathParamsType && !searchParamsType && requestBodyType) {
-      await runner(
-        `generator mutation-with-body-and-pathparams --outputpath ${outputpath} --name ${operationName} --url ${route} --method ${verb} --output "${responseType}" --input "${requestBodyType}" --pathparams "${pathParamsType}"`,
-        defaultParams
-      );
-    }
-    if (!isQuery && !pathParamsType && searchParamsType && requestBodyType) {
-      await runner(
-        `generator mutation-with-body-and-searchparams --outputpath ${outputpath} --name ${operationName} --url ${route} --method ${verb} --output "${responseType}" --input "${requestBodyType}" --searchparams "${searchParamsType}"`,
-        defaultParams
-      );
-    }
-    if (!isQuery && pathParamsType && searchParamsType && requestBodyType) {
-      await runner(
-        `generator mutation-with-body-and-pathparams-and-searchparams --outputpath ${outputpath} --name ${operationName} --url ${route} --method ${verb} --output "${responseType}" --input "${requestBodyType}" --pathparams "${pathParamsType}" --searchparams "${searchParamsType}"`,
-        defaultParams
-      );
-    }
-  }
+  const queries = options.filter((option) => option.isQuery);
+  const mutations = options.filter((option) => !option.isQuery);
+  await runner(
+    `generator generate --outputpath ${outputpath} --models ${JSON.stringify(
+      models
+    )} --queries ${JSON.stringify(queries)} --mutations ${JSON.stringify(
+      mutations
+    )}`,
+    defaultParams
+  );
 }
 
 module.exports = generator;
