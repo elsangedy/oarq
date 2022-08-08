@@ -6,6 +6,10 @@ const logAdapter = createAdapter(async (req) => {
 
 const client = createClient(logAdapter);
 
+client
+  .query(["consultarCobranca", { txid: "1" }, { revisao: 1 }])
+  .then((res) => res.valor);
+
 client.query(["consultarPix", { e2eid: "1" }]).then((res) => res.valor);
 client.mutation(["criarCobranca", { txid: "1" }], {
   valor: { original: 1 },

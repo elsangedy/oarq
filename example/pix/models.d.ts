@@ -1,4 +1,3 @@
-
 export type TxId = string
 export type EndToEndId = string
 export type DevolucaoId = string

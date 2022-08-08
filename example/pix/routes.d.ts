@@ -34,10 +34,10 @@ export type WebhookPixBodyRequestBody = { pix?: Pix[] };
 
 export type QueriesRoutes = {
   "consultarCobranca": Route<{ txid: TxId }, { revisao?: Revisao } | undefined, undefined, CobCompleta>,
-  "consultarListaDeCobrancas": Route<undefined, { cpf?: Cpf & any; cnpj?: Cnpj & any; status?: CobStatus & any } | undefined, undefined, CobsConsultadas>,
+  "consultarListaDeCobrancas": Route<undefined, { inicio: string; fim: string; cpf?: Cpf & any; cnpj?: Cnpj & any; status?: CobStatus & any; "paginacao.paginaAtual"?: number; "paginacao.itensPorPagina"?: number }, undefined, CobsConsultadas>,
   "consultarDevolucao": Route<{ e2eid: EndToEndId; id: DevolucaoId }, undefined, undefined, Devolucao>,
   "consultarPix": Route<{ e2eid: EndToEndId }, undefined, undefined, Pix>,
-  "consultarPixRecebidos": Route<undefined, { txId?: TxId; cpf?: Cpf & any; cnpj?: Cnpj & any } | undefined, undefined, PixConsultados>,
+  "consultarPixRecebidos": Route<undefined, { inicio: string; fim: string; txId?: TxId; cpf?: Cpf & any; cnpj?: Cnpj & any; "paginacao.paginaAtual"?: number; "paginacao.itensPorPagina"?: number }, undefined, PixConsultados>,
   "recuperarOPayloadJsonQueRepresentaACobranca": Route<{ pixUrlAcessToken: string }, undefined, undefined, void>,
   "exibirInformacoesAcercaDoWebookPix": Route<undefined, undefined, undefined, Webhook>,
 };
