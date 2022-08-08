@@ -1,5 +1,5 @@
 const _ = require("lodash/fp");
-const swagger2openapi = require("swagger2openapi");
+const SwaggerParser = require("@apidevtools/swagger-parser");
 const { runner, Logger } = require("hygen");
 const path = require("path");
 const templates = path.join(__dirname, "templates");
@@ -27,22 +27,10 @@ const throwError = (message) => {
   throw new Error(message);
 };
 const hasDuplicates = (arr) => new Set(arr).size != arr.length;
+const hasDot = (str) => str.indexOf(".") > -1;
 const hasHyphen = (str) => str.indexOf("-") > -1;
-const fixTypeWhenHaveHyphen = (name) => (hasHyphen(name) ? `"${name}"` : name);
-
-const convertToOpenApiSchema = (data) =>
-  new Promise((resolve, reject) => {
-    if (_.startsWith("3.0", data.openapi)) {
-      resolve(data);
-    }
-    swagger2openapi.convertObj(data, {}, (err, convertedObj) => {
-      if (err) {
-        reject(err);
-      } else {
-        resolve(convertedObj.openapi);
-      }
-    });
-  });
+const fixParameterName = (name) =>
+  hasDot(name) || hasHyphen(name) ? `"${name}"` : name;
 
 const validateSchema = _.compose(
   (operationsIds) => {
@@ -237,72 +225,85 @@ const getResReqTypes = (responsesOrRequests) =>
     })
     .join(" | ");
 
-const getOptions = _.compose(
-  _.flatten,
-  _.map(([route, verbs]) =>
-    _.compose(
-      _.map(([verb, operation]) => {
-        const isQuery = verb === "get";
-        const allParams = [
-          ...(verbs.parameters || []),
-          ...(operation.parameters || []),
-        ];
-        const pathParamsBase = allParams.filter((param) => param.in === "path");
-        const searchParamsBase = allParams.filter(
-          (param) => param.in === "query"
-        );
+const getOptions = (parser) =>
+  _.compose(
+    _.flatten,
+    _.map(([route, verbs]) =>
+      _.compose(
+        _.map(([verb, operation]) => {
+          const isQuery = verb === "get";
+          const allParams = [
+            ...(verbs.parameters || []),
+            ...(operation.parameters || []),
+          ].map((parameter) =>
+            isReference(parameter)
+              ? parser.$refs.get(parameter.$ref)
+              : parameter
+          );
+          const pathParamsBase = allParams.filter(
+            (param) => param.in === "path"
+          );
+          const searchParamsBase = allParams.filter(
+            (param) => param.in === "query"
+          );
 
-        const operationName = _.camelCase(
-          operation.operationId || operation.summary || ""
-        );
+          const operationName = _.camelCase(
+            operation.operationId || operation.summary || ""
+          );
 
-        const responseType = getResReqTypes(
-          Object.entries(operation.responses).filter(([statusCode]) =>
-            statusCode.toString().startsWith("2")
-          )
-        );
-        const requestBodyType = getResReqTypes([
-          ["body", operation.requestBody],
-        ]);
-        const pathParamsType = pathParamsBase
-          .map(
-            (p) =>
-              `${p.name}${p.required ? "" : "?"}: ${resolveTypeValue(p.schema)}`
-          )
-          .join("; ");
-        const searchParamsType = searchParamsBase
-          .map(
-            (p) =>
-              `${fixTypeWhenHaveHyphen(p.name)}${
-                p.required ? "" : "?"
-              }: ${resolveTypeValue(p.schema)}`
-          )
-          .join("; ");
+          const responseType = getResReqTypes(
+            Object.entries(operation.responses).filter(([statusCode]) =>
+              statusCode.toString().startsWith("2")
+            )
+          );
+          const requestBodyType = getResReqTypes([
+            ["body", operation.requestBody],
+          ]);
+          const pathParamsType =
+            pathParamsBase.length > 0
+              ? `{ ${pathParamsBase
+                  .map((p) => `${p.name}: ${resolveTypeValue(p.schema)}`)
+                  .join("; ")} }`
+              : "undefined";
+          const searchParamsType =
+            searchParamsBase.length > 0
+              ? `{ ${searchParamsBase
+                  .map(
+                    (p) =>
+                      `${fixParameterName(p.name)}${
+                        p.required ? "" : "?"
+                      }: ${resolveTypeValue(p.schema)}`
+                  )
+                  .join("; ")} }${
+                  searchParamsBase.some((p) => p.required) ? "" : " | undefined"
+                }`
+              : "undefined";
 
-        return {
-          verb: verb.toLowerCase(),
-          route,
-          isQuery,
-          responseType,
-          pathParamsType,
-          searchParamsType,
-          requestBodyType,
-          operationName,
-        };
-      }),
-      _.filter(([verb]) => isAvailabelVerb(verb)),
-      _.entries
-    )(verbs)
-  ),
-  _.entries,
-  _.prop("paths")
-);
+          return {
+            verb: verb.toLowerCase(),
+            route,
+            isQuery,
+            responseType,
+            pathParamsType,
+            searchParamsType,
+            requestBodyType,
+            operationName,
+          };
+        }),
+        _.filter(([verb]) => isAvailabelVerb(verb)),
+        _.entries
+      )(verbs)
+    ),
+    _.entries,
+    _.prop("paths")
+  );
 
-async function generator(spec, outputpath) {
-  const schema = await convertToOpenApiSchema(spec);
+async function generator(input, outputpath) {
+  const parser = new SwaggerParser();
+  const schema = await parser.bundle(input);
   validateSchema(schema);
   const models = generatorGlobalTypes(schema);
-  const options = getOptions(schema);
+  const options = getOptions(parser)(schema);
   const queries = options.filter((option) => option.isQuery);
   const mutations = options.filter((option) => !option.isQuery);
   await runner(

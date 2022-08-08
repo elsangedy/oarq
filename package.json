@@ -1,6 +1,6 @@
 {
   "name": "oarq",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "main": "index.js",
   "bin": {
     "oarq": "index.js"
@@ -23,10 +23,10 @@
     "fetch"
   ],
   "dependencies": {
+    "@apidevtools/swagger-parser": "^10.1.0",
     "axios": "^0.26.1",
     "commander": "^9.4.0",
     "hygen": "^6.2.0",
-    "json-schema-ref-parser": "^9.0.9",
     "lodash": "^4.17.21",
     "react-query": "^3.34.19",
     "swagger2openapi": "^7.0.8"

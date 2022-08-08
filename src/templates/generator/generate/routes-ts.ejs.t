@@ -6,11 +6,11 @@ import { Route, RouterMap } from "./runtime";
 <%- model %><% }) %>
 
 export type QueriesRoutes = {<% JSON.parse(queries).forEach(query => { %>
-  "<%- query.operationName %>": Route<<% if (query.pathParamsType) { %>{ <%- query.pathParamsType %> }<% } else { %>undefined<% } %>, <% if (query.searchParamsType) { %>{ <%- query.searchParamsType %> } | undefined<% } else { %>undefined<% } %>, undefined, <%- query.responseType %>>,<% }) %>
+  "<%- query.operationName %>": Route<<%- query.pathParamsType %>, <%- query.searchParamsType %>, undefined, <%- query.responseType %>>,<% }) %>
 };
 
 export type MutationsRoutes = {<% JSON.parse(mutations).forEach(mutation => { %>
-  "<%- mutation.operationName %>": Route<<% if (mutation.pathParamsType) { %>{ <%- mutation.pathParamsType %> }<% } else { %>undefined<% } %>, <% if (mutation.searchParamsType) { %>{ <%- mutation.searchParamsType %> } | undefined<% } else { %>undefined<% } %>, <%- mutation.requestBodyType %>, <%- mutation.responseType %>>;<% }) %>
+  "<%- mutation.operationName %>": Route<<%- mutation.pathParamsType %>, <%- mutation.searchParamsType %>, <%- mutation.requestBodyType %>, <%- mutation.responseType %>>;<% }) %>
 };
 
 export const routerQueriesMap: RouterMap<QueriesRoutes>

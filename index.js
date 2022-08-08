@@ -3,7 +3,6 @@
 "use strict";
 
 const path = require("path");
-const RefParser = require("json-schema-ref-parser");
 const { program } = require("commander");
 const pkg = require("./package.json");
 
@@ -22,8 +21,7 @@ const params = program
 const generator = require(path.resolve(__dirname, "src/index.js"));
 
 if (generator) {
-  RefParser.bundle(params.input, params.input, {})
-    .then((spec) => generator(spec, params.output))
+  generator(params.input, params.output)
     .then(() => {
       process.exit(0);
     })
